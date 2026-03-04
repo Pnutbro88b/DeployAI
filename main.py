@@ -1114,3 +1114,65 @@ def cmd_apr_table(registry: Registry, asset: str) -> int:
     return 0
 
 
+def cmd_monte_carlo(registry: Registry, vault_id: str, days: int, deposit: float, paths: int) -> int:
+    mc = MonteCarloSimulator(registry)
+    try:
+        out = mc.run(vault_id, deposit, days, num_paths=paths)
+        print(f"Monte Carlo ({paths} paths) — Vault: {vault_id}  Days: {days}  Deposit: {fmt_num(deposit)}")
+        print(f"  Min final: {fmt_num(out['min_final'])}  Max final: {fmt_num(out['max_final'])}")
+        print(f"  Median: {fmt_num(out['median_final'])}  Mean: {fmt_num(out['mean_final'])}")
+        print(f"  5th pct: {fmt_num(out['p5'])}  95th pct: {fmt_num(out['p95'])}")
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def cmd_stress(registry: Registry, vault_id: str, days: int, deposit: float, shock: float = -0.50) -> int:
+    mc = MonteCarloSimulator(registry)
+    try:
+        res = mc.stress_test(vault_id, deposit, days, apr_shock=shock)
+        print(f"Stress test (APR shock {shock:.0%}) — Vault: {res.vault_id}")
+        print(f"  Initial: {fmt_num(res.initial_deposit)}  Final: {fmt_num(res.final_value)}")
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def cmd_health(registry: Registry) -> int:
+    h = health_summary(registry)
+    print("Chains:", h["chains"], "Protocols:", h["protocols"], "Strategies:", h["strategies"], "Vaults:", h["vaults"])
+    print("Validation errors:", h["validation_errors"], "warnings:", h["validation_warnings"])
+    for e in h["errors"]:
+        print("  Error:", e)
+    for w in h["warnings"]:
+        print("  Warning:", w)
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# Interactive menu
+# -----------------------------------------------------------------------------
+
+
+def run_interactive(registry: Registry) -> int:
+    sim = Simulator(registry)
+    planner = Planner(registry)
+    while True:
+        print()
+        print("=== DeployAI :: Loopa Orchestrator ===")
+        print("1) Snapshot (JSON)")
+        print("2) List strategies")
+        print("3) List vaults")
+        print("4) List chains")
+        print("5) Simulate vault")
+        print("6) Build deployment plan")
+        print("7) Load config from file")
+        print("8) Save snapshot to file")
+        print("9) Demo simulation")
+        print("10) Validate config")
+        print("11) Text report")
+        print("12) APR comparison table")
+        print("13) Monte Carlo simulation")
+        print("14) Stress test")
