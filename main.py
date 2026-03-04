@@ -618,3 +618,65 @@ def seed_extended(registry: Registry) -> None:
             risk_band="AGGRESSIVE",
             base_apr=0.18,
             boost_apr=0.05,
+            performance_fee=0.18,
+            max_capacity=12_000_000.0,
+        ),
+        StrategyConfig(
+            id="dai-aave-eth",
+            name="DAI Aave V3 Ethereum",
+            asset="DAI",
+            chain="Ethereum",
+            protocol="AaveV3",
+            risk_band="CONSERVATIVE",
+            base_apr=0.045,
+            boost_apr=0.01,
+            performance_fee=0.10,
+            max_capacity=45_000_000.0,
+        ),
+        StrategyConfig(
+            id="dai-comp-eth",
+            name="DAI Compound V3 Ethereum",
+            asset="DAI",
+            chain="Ethereum",
+            protocol="CompoundV3",
+            risk_band="CONSERVATIVE",
+            base_apr=0.04,
+            boost_apr=0.008,
+            performance_fee=0.08,
+            max_capacity=28_000_000.0,
+        ),
+        StrategyConfig(
+            id="dai-curve-eth",
+            name="DAI Curve Ethereum",
+            asset="DAI",
+            chain="Ethereum",
+            protocol="Curve",
+            risk_band="BALANCED",
+            base_apr=0.058,
+            boost_apr=0.018,
+            performance_fee=0.12,
+            max_capacity=20_000_000.0,
+        ),
+    ]
+    for strat in extended_strategies:
+        if strat.id not in registry.strategies:
+            try:
+                registry.add_strategy(strat)
+            except ValueError:
+                pass
+
+    if "loopa-dai" not in registry.vaults:
+        try:
+            registry.add_vault(
+                VaultConfig(
+                    id="loopa-dai",
+                    name="Loopa DAI MetaVault",
+                    asset="DAI",
+                    base_chain="Ethereum",
+                    management_fee=0.02,
+                    withdrawal_fee=0.001,
+                    default_risk_band="CONSERVATIVE",
+                    rebalance_interval_s=86400,
+                    strategies=["dai-aave-eth", "dai-comp-eth", "dai-curve-eth"],
+                )
+            )
