@@ -246,3 +246,65 @@ class Registry:
 
 
 # -----------------------------------------------------------------------------
+# Simulator
+# -----------------------------------------------------------------------------
+
+
+class Simulator:
+    def __init__(self, registry: Registry) -> None:
+        self.registry = registry
+
+    def simulate_vault(
+        self,
+        vault_id: str,
+        initial_deposit: float,
+        days: int,
+        rebalance_every_days: int = 7,
+        noise_std: float = 0.02,
+    ) -> SimulationResult:
+        vault = self.registry.get_vault(vault_id)
+        if not vault:
+            raise ValueError(f"Unknown vault: {vault_id}")
+        if not vault.strategies:
+            raise ValueError("Vault has no strategies configured")
+
+        now = int(time.time())
+        end_ts = now + days * 86400
+        value = float(initial_deposit)
+        steps: List[dict] = []
+
+        weights = self._compute_weights(vault)
+        for day in range(days):
+            daily_yield = 0.0
+            for sid, weight in weights.items():
+                strat = self.registry.get_strategy(sid)
+                if not strat:
+                    continue
+                apr = strat.net_apr()
+                noisy_apr = self._apply_noise(apr, noise_std)
+                daily_rate = noisy_apr / 365.0
+                alloc = value * weight
+                daily_yield += alloc * daily_rate
+            value += daily_yield
+            if (day + 1) % rebalance_every_days == 0:
+                weights = self._compute_weights(vault)
+            if (day + 1) % 30 == 0 or day == days - 1:
+                steps.append({"day": day + 1, "timestamp": now + (day + 1) * 86400, "value": value})
+
+        return SimulationResult(
+            vault_id=vault_id,
+            start_ts=now,
+            end_ts=end_ts,
+            initial_deposit=initial_deposit,
+            final_value=value,
+            steps=steps,
+        )
+
+    def _compute_weights(self, vault: VaultConfig) -> Dict[str, float]:
+        scores: Dict[str, float] = {}
+        for sid in vault.strategies:
+            strat = self.registry.get_strategy(sid)
+            if not strat:
+                continue
+            if strat.risk_band != vault.default_risk_band:
+                continue
