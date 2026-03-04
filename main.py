@@ -432,3 +432,65 @@ def seed_defaults(registry: Registry) -> None:
             id="usdc-aave-eth",
             name="USDC Aave V3 Ethereum",
             asset="USDC",
+            chain="Ethereum",
+            protocol="AaveV3",
+            risk_band="CONSERVATIVE",
+            base_apr=0.05,
+            boost_apr=0.01,
+            performance_fee=0.10,
+            max_capacity=50_000_000.0,
+        )
+    )
+    registry.add_strategy(
+        StrategyConfig(
+            id="usdc-uni-arb",
+            name="USDC Uniswap V3 Arbitrum",
+            asset="USDC",
+            chain="Arbitrum",
+            protocol="UniswapV3",
+            risk_band="BALANCED",
+            base_apr=0.12,
+            boost_apr=0.03,
+            performance_fee=0.15,
+            max_capacity=25_000_000.0,
+        )
+    )
+    registry.add_strategy(
+        StrategyConfig(
+            id="usdc-velo-op",
+            name="USDC Velodrome V2 Optimism",
+            asset="USDC",
+            chain="Optimism",
+            protocol="VelodromeV2",
+            risk_band="AGGRESSIVE",
+            base_apr=0.20,
+            boost_apr=0.06,
+            performance_fee=0.18,
+            max_capacity=15_000_000.0,
+        )
+    )
+    registry.add_strategy(
+        StrategyConfig(
+            id="usdc-comp-eth",
+            name="USDC Compound V3 Ethereum",
+            asset="USDC",
+            chain="Ethereum",
+            protocol="CompoundV3",
+            risk_band="CONSERVATIVE",
+            base_apr=0.042,
+            boost_apr=0.008,
+            performance_fee=0.08,
+            max_capacity=30_000_000.0,
+        )
+    )
+    registry.add_strategy(
+        StrategyConfig(
+            id="usdc-curve-eth",
+            name="USDC Curve Ethereum",
+            asset="USDC",
+            chain="Ethereum",
+            protocol="Curve",
+            risk_band="BALANCED",
+            base_apr=0.065,
+            boost_apr=0.02,
+            performance_fee=0.12,
