@@ -60,3 +60,65 @@ class Chain:
 class Protocol:
     name: str
     chain: str
+    kind: str  # lending, dex, staking
+
+    def as_dict(self) -> dict:
+        return {"name": self.name, "chain": self.chain, "kind": self.kind}
+
+
+@dataclass
+class StrategyConfig:
+    id: str
+    name: str
+    asset: str
+    chain: str
+    protocol: str
+    risk_band: str
+    base_apr: float
+    boost_apr: float
+    performance_fee: float
+    max_capacity: float
+    metadata: Dict[str, str] = field(default_factory=dict)
+
+    def gross_apr(self) -> float:
+        return self.base_apr + self.boost_apr
+
+    def net_apr(self) -> float:
+        return self.gross_apr() * (1.0 - self.performance_fee)
+
+    def as_dict(self) -> dict:
+        d = {
+            "id": self.id,
+            "name": self.name,
+            "asset": self.asset,
+            "chain": self.chain,
+            "protocol": self.protocol,
+            "risk_band": self.risk_band,
+            "base_apr": self.base_apr,
+            "boost_apr": self.boost_apr,
+            "performance_fee": self.performance_fee,
+            "max_capacity": self.max_capacity,
+            "gross_apr": self.gross_apr(),
+            "net_apr": self.net_apr(),
+            "metadata": self.metadata,
+        }
+        return d
+
+
+@dataclass
+class VaultConfig:
+    id: str
+    name: str
+    asset: str
+    base_chain: str
+    management_fee: float
+    withdrawal_fee: float
+    default_risk_band: str
+    rebalance_interval_s: int
+    strategies: List[str] = field(default_factory=list)
+
+    def as_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "asset": self.asset,
