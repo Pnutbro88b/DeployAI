@@ -494,3 +494,65 @@ def seed_defaults(registry: Registry) -> None:
             base_apr=0.065,
             boost_apr=0.02,
             performance_fee=0.12,
+            max_capacity=25_000_000.0,
+        )
+    )
+
+    registry.add_vault(
+        VaultConfig(
+            id="loopa-usdc",
+            name="Loopa USDC MetaVault",
+            asset="USDC",
+            base_chain="Ethereum",
+            management_fee=0.02,
+            withdrawal_fee=0.001,
+            default_risk_band="BALANCED",
+            rebalance_interval_s=86400,
+            strategies=["usdc-aave-eth", "usdc-uni-arb", "usdc-velo-op", "usdc-comp-eth", "usdc-curve-eth"],
+        )
+    )
+
+
+def seed_extended(registry: Registry) -> None:
+    """Add more chains, protocols, strategies, and a DAI vault."""
+    for name, rpc in [
+        ("Base", "https://mainnet.base.org"),
+        ("Avalanche", "https://api.avax.network/ext/bc/C/rpc"),
+    ]:
+        if registry.get_chain(name) is None:
+            registry.add_chain(Chain(name, rpc, block_time_s=2.0))
+
+    for chain, proto_name, kind in [
+        ("Ethereum", "Morpho", "lending"),
+        ("Ethereum", "Yearn", "vault"),
+        ("Ethereum", "Convex", "boost"),
+        ("Ethereum", "Balancer", "dex"),
+        ("Ethereum", "Lido", "staking"),
+        ("Polygon", "AaveV3", "lending"),
+        ("Base", "Aerodrome", "dex"),
+    ]:
+        key = f"{chain}:{proto_name}"
+        if key not in registry.protocols and registry.get_chain(chain):
+            registry.add_protocol(Protocol(proto_name, chain, kind))
+
+    extended_strategies = [
+        StrategyConfig(
+            id="usdc-morpho-eth",
+            name="USDC Morpho Ethereum",
+            asset="USDC",
+            chain="Ethereum",
+            protocol="Morpho",
+            risk_band="CONSERVATIVE",
+            base_apr=0.055,
+            boost_apr=0.012,
+            performance_fee=0.10,
+            max_capacity=40_000_000.0,
+            metadata={"optimizer": "true"},
+        ),
+        StrategyConfig(
+            id="usdc-yearn-eth",
+            name="USDC Yearn Ethereum",
+            asset="USDC",
+            chain="Ethereum",
+            protocol="Yearn",
+            risk_band="BALANCED",
