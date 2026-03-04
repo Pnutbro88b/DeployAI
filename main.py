@@ -866,3 +866,65 @@ class MonteCarloSimulator:
         )
 
 
+# -----------------------------------------------------------------------------
+# Capacity and health helpers
+# -----------------------------------------------------------------------------
+
+
+def get_total_capacity_by_asset(registry: Registry, asset: str) -> float:
+    return sum(s.max_capacity for s in registry.strategies.values() if s.asset == asset)
+
+
+def get_best_net_apr_strategy(registry: Registry, asset: str, risk_band: Optional[str] = None) -> Optional[StrategyConfig]:
+    candidates = [s for s in registry.strategies.values() if s.asset == asset]
+    if risk_band:
+        candidates = [s for s in candidates if s.risk_band == risk_band]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda s: s.net_apr())
+
+
+def health_summary(registry: Registry) -> Dict[str, Any]:
+    v = Validator(registry)
+    v.validate_all()
+    return {
+        "chains": len(registry.chains),
+        "protocols": len(registry.protocols),
+        "strategies": len(registry.strategies),
+        "vaults": len(registry.vaults),
+        "validation_errors": len(v.errors),
+        "validation_warnings": len(v.warnings),
+        "errors": v.errors,
+        "warnings": v.warnings,
+    }
+
+
+def projected_yield_simple(principal: float, apr: float, days: int) -> float:
+    """Compound once per day: principal * (1 + apr/365)^days."""
+    if days <= 0:
+        return principal
+    daily = 1.0 + (apr / 365.0)
+    return principal * (daily ** days)
+
+
+def projected_yield_continuous(principal: float, apr: float, days: float) -> float:
+    """Continuous compounding: principal * exp(apr * days/365)."""
+    if days <= 0:
+        return principal
+    return principal * math.exp(apr * (days / 365.0))
+
+
+def strategy_summary_by_chain(registry: Registry) -> Dict[str, List[str]]:
+    out: Dict[str, List[str]] = {}
+    for s in registry.strategies.values():
+        out.setdefault(s.chain, []).append(s.id)
+    return out
+
+
+def strategy_summary_by_protocol(registry: Registry) -> Dict[str, List[str]]:
+    out: Dict[str, List[str]] = {}
+    for s in registry.strategies.values():
+        key = f"{s.chain}:{s.protocol}"
+        out.setdefault(key, []).append(s.id)
+    return out
+
