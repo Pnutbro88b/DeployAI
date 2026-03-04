@@ -990,3 +990,65 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
 # -----------------------------------------------------------------------------
 # Commands
 # -----------------------------------------------------------------------------
+
+
+def cmd_snapshot(registry: Registry) -> int:
+    print(pretty_json(registry.snapshot()))
+    return 0
+
+
+def cmd_strategies(registry: Registry) -> int:
+    if not registry.strategies:
+        print("No strategies configured.")
+        return 0
+    for s in registry.strategies.values():
+        print(f"  {s.id}: {s.name}  asset={s.asset}  chain={s.chain}  netAPR={fmt_pct(s.net_apr())}  cap={fmt_num(s.max_capacity)}")
+    return 0
+
+
+def cmd_vaults(registry: Registry) -> int:
+    if not registry.vaults:
+        print("No vaults configured.")
+        return 0
+    for v in registry.vaults.values():
+        print(f"  {v.id}: {v.name}  asset={v.asset}  strategies={', '.join(v.strategies)}")
+    return 0
+
+
+def cmd_chains(registry: Registry) -> int:
+    for c in registry.chains.values():
+        print(f"  {c.name}: {c.rpc}")
+    return 0
+
+
+def cmd_simulate(registry: Registry, vault_id: str, days: int, deposit: float) -> int:
+    sim = Simulator(registry)
+    try:
+        res = sim.simulate_vault(vault_id, deposit, days)
+        print(f"Vault: {res.vault_id}  Initial: {fmt_num(res.initial_deposit)}  Final: {fmt_num(res.final_value)}")
+        print(f"Gain: {fmt_pct((res.final_value - res.initial_deposit) / res.initial_deposit)}")
+        for step in res.steps[-5:]:
+            print(f"  day={step['day']}  value={fmt_num(step['value'])}")
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def cmd_plan(registry: Registry, vault_id: str) -> int:
+    planner = Planner(registry)
+    try:
+        plan = planner.build_plan(vault_id)
+        print(pretty_json(plan.as_dict()))
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def cmd_load(registry: Registry, path: str) -> int:
+    if not path:
+        print("Error: --file required", file=sys.stderr)
+        return 1
+    if not os.path.exists(path):
+        print(f"File not found: {path}", file=sys.stderr)
