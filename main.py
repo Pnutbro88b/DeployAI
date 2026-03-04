@@ -1052,3 +1052,65 @@ def cmd_load(registry: Registry, path: str) -> int:
         return 1
     if not os.path.exists(path):
         print(f"File not found: {path}", file=sys.stderr)
+        return 1
+    try:
+        registry.load_from_file(path)
+        print("Config loaded.")
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def cmd_save(registry: Registry, path: str) -> int:
+    if not path:
+        print("Error: --file required", file=sys.stderr)
+        return 1
+    try:
+        with open(path, "w", encoding="utf8") as f:
+            json.dump(registry.snapshot(), f, indent=2, sort_keys=True)
+        print(f"Saved to {path}")
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def cmd_demo(registry: Registry) -> int:
+    print("DeployAI demo — Loopa yield vault orchestration")
+    print("Strategies:", len(registry.strategies))
+    print("Vaults:", len(registry.vaults))
+    sim = Simulator(registry)
+    res = sim.simulate_vault("loopa-usdc", 100_000.0, 90)
+    print(f"90-day sim: {fmt_num(res.initial_deposit)} -> {fmt_num(res.final_value)}")
+    return 0
+
+
+def cmd_validate(registry: Registry) -> int:
+    v = Validator(registry)
+    ok = v.validate_all()
+    if v.errors:
+        for e in v.errors:
+            print(f"Error: {e}", file=sys.stderr)
+    if v.warnings:
+        for w in v.warnings:
+            print(f"Warning: {w}", file=sys.stderr)
+    if ok:
+        print("Validation passed.")
+    else:
+        print("Validation failed.", file=sys.stderr)
+    return 0 if ok else 1
+
+
+def cmd_report(registry: Registry, vault_id: Optional[str] = None) -> int:
+    gen = ReportGenerator(registry)
+    print(gen.text_report(vault_id))
+    return 0
+
+
+def cmd_apr_table(registry: Registry, asset: str) -> int:
+    gen = ReportGenerator(registry)
+    print(gen.apr_comparison_table(asset))
+    return 0
+
+
