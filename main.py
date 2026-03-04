@@ -184,3 +184,65 @@ class Registry:
         self.strategies: Dict[str, StrategyConfig] = {}
         self.vaults: Dict[str, VaultConfig] = {}
 
+    def add_chain(self, chain: Chain) -> None:
+        if chain.name in self.chains:
+            raise ValueError(f"Chain already exists: {chain.name}")
+        self.chains[chain.name] = chain
+
+    def get_chain(self, name: str) -> Optional[Chain]:
+        return self.chains.get(name)
+
+    def add_protocol(self, proto: Protocol) -> None:
+        key = f"{proto.chain}:{proto.name}"
+        if key in self.protocols:
+            raise ValueError(f"Protocol already exists: {key}")
+        if proto.chain not in self.chains:
+            raise ValueError(f"Unknown chain for protocol: {proto.chain}")
+        self.protocols[key] = proto
+
+    def get_protocol(self, chain: str, name: str) -> Optional[Protocol]:
+        return self.protocols.get(f"{chain}:{name}")
+
+    def add_strategy(self, strat: StrategyConfig) -> None:
+        if strat.id in self.strategies:
+            raise ValueError(f"Strategy already exists: {strat.id}")
+        key = f"{strat.chain}:{strat.protocol}"
+        if key not in self.protocols:
+            raise ValueError(f"Unknown protocol {strat.protocol} on chain {strat.chain}")
+        self.strategies[strat.id] = strat
+
+    def get_strategy(self, strat_id: str) -> Optional[StrategyConfig]:
+        return self.strategies.get(strat_id)
+
+    def add_vault(self, vault: VaultConfig) -> None:
+        if vault.id in self.vaults:
+            raise ValueError(f"Vault already exists: {vault.id}")
+        if vault.base_chain not in self.chains:
+            raise ValueError(f"Unknown base chain: {vault.base_chain}")
+        self.vaults[vault.id] = vault
+
+    def get_vault(self, vault_id: str) -> Optional[VaultConfig]:
+        return self.vaults.get(vault_id)
+
+    def load_from_file(self, path: str) -> None:
+        with open(path, "r", encoding="utf8") as f:
+            data = json.load(f)
+        for ch in data.get("chains", []):
+            self.add_chain(Chain(**ch))
+        for pr in data.get("protocols", []):
+            self.add_protocol(Protocol(**pr))
+        for st in data.get("strategies", []):
+            self.add_strategy(StrategyConfig(**{k: v for k, v in st.items() if k != "gross_apr" and k != "net_apr"}))
+        for vt in data.get("vaults", []):
+            self.add_vault(VaultConfig(**vt))
+
+    def snapshot(self) -> dict:
+        return {
+            "chains": [c.as_dict() for c in self.chains.values()],
+            "protocols": [p.as_dict() for p in self.protocols.values()],
+            "strategies": [s.as_dict() for s in self.strategies.values()],
+            "vaults": [v.as_dict() for v in self.vaults.values()],
+        }
+
+
+# -----------------------------------------------------------------------------
