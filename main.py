@@ -928,3 +928,65 @@ def strategy_summary_by_protocol(registry: Registry) -> Dict[str, List[str]]:
         out.setdefault(key, []).append(s.id)
     return out
 
+
+def vault_effective_apr_estimate(registry: Registry, vault_id: str) -> Optional[float]:
+    """Weighted average net APR of vault's strategies in default risk band."""
+    vault = registry.get_vault(vault_id)
+    if not vault:
+        return None
+    total_apr = 0.0
+    count = 0
+    for sid in vault.strategies:
+        s = registry.get_strategy(sid)
+        if not s or s.risk_band != vault.default_risk_band:
+            continue
+        total_apr += s.net_apr()
+        count += 1
+    if count == 0:
+        for sid in vault.strategies:
+            s = registry.get_strategy(sid)
+            if s:
+                total_apr += s.net_apr()
+                count += 1
+    return total_apr / count if count else None
+
+
+def list_assets(registry: Registry) -> List[str]:
+    assets: set = set()
+    for s in registry.strategies.values():
+        assets.add(s.asset)
+    return sorted(assets)
+
+
+def list_risk_bands(registry: Registry) -> List[str]:
+    bands: set = set()
+    for s in registry.strategies.values():
+        bands.add(s.risk_band)
+    return sorted(bands)
+
+
+# -----------------------------------------------------------------------------
+# CLI: argparse
+# -----------------------------------------------------------------------------
+
+
+def parse_args(argv: List[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog=APP_NAME,
+        description="DeployAI — Loopa yield vault orchestration and deployment assistant.",
+    )
+    parser.add_argument("--config", default="", help="Config file path")
+    parser.add_argument("command", nargs="?", default="interactive", help="Command to run")
+    parser.add_argument("--file", "-f", help="JSON file for load/save")
+    parser.add_argument("--vault", default="loopa-usdc", help="Vault ID")
+    parser.add_argument("--days", type=int, default=365, help="Simulation days")
+    parser.add_argument("--deposit", type=float, default=100_000.0, help="Initial deposit for simulation")
+    parser.add_argument("--paths", type=int, default=100, help="Monte Carlo paths")
+    parser.add_argument("--asset", default="USDC", help="Asset for APR table / filters")
+    parser.add_argument("--version", action="store_true", help="Print version")
+    return parser.parse_args(argv)
+
+
+# -----------------------------------------------------------------------------
+# Commands
+# -----------------------------------------------------------------------------
