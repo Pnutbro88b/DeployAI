@@ -804,3 +804,65 @@ class ReportGenerator:
 # -----------------------------------------------------------------------------
 
 
+class MonteCarloSimulator:
+    def __init__(self, registry: Registry) -> None:
+        self.registry = registry
+
+    def run(
+        self,
+        vault_id: str,
+        initial_deposit: float,
+        days: int,
+        num_paths: int = 100,
+        noise_std: float = 0.03,
+    ) -> Dict[str, Any]:
+        vault = self.registry.get_vault(vault_id)
+        if not vault:
+            raise ValueError(f"Unknown vault: {vault_id}")
+        final_values: List[float] = []
+        for _ in range(num_paths):
+            sim = Simulator(self.registry)
+            res = sim.simulate_vault(vault_id, initial_deposit, days, noise_std=noise_std)
+            final_values.append(res.final_value)
+        final_values.sort()
+        return {
+            "vault_id": vault_id,
+            "initial_deposit": initial_deposit,
+            "days": days,
+            "num_paths": num_paths,
+            "min_final": min(final_values),
+            "max_final": max(final_values),
+            "median_final": final_values[num_paths // 2],
+            "p5": final_values[max(0, int(num_paths * 0.05))],
+            "p95": final_values[min(num_paths - 1, int(num_paths * 0.95))],
+            "mean_final": sum(final_values) / len(final_values),
+        }
+
+    def stress_test(
+        self,
+        vault_id: str,
+        initial_deposit: float,
+        days: int,
+        apr_shock: float = -0.50,
+    ) -> SimulationResult:
+        """Single path with an APR shock (e.g. -50% APR halfway)."""
+        vault = self.registry.get_vault(vault_id)
+        if not vault:
+            raise ValueError(f"Unknown vault: {vault_id}")
+        sim = Simulator(self.registry)
+        res = sim.simulate_vault(vault_id, initial_deposit, days, noise_std=0.0)
+        mid = days // 2
+        value_mid = res.initial_deposit + (res.final_value - res.initial_deposit) * (mid / max(days, 1))
+        value_end_normal = res.final_value
+        shock_mult = 1.0 + apr_shock
+        value_end_stress = value_mid + (value_end_normal - value_mid) * shock_mult
+        return SimulationResult(
+            vault_id=vault_id,
+            start_ts=res.start_ts,
+            end_ts=res.end_ts,
+            initial_deposit=initial_deposit,
+            final_value=max(0.0, value_end_stress),
+            steps=res.steps,
+        )
+
+
