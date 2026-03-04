@@ -122,3 +122,65 @@ class VaultConfig:
             "id": self.id,
             "name": self.name,
             "asset": self.asset,
+            "base_chain": self.base_chain,
+            "management_fee": self.management_fee,
+            "withdrawal_fee": self.withdrawal_fee,
+            "default_risk_band": self.default_risk_band,
+            "rebalance_interval_s": self.rebalance_interval_s,
+            "strategies": list(self.strategies),
+        }
+
+
+@dataclass
+class DeploymentPlan:
+    vault_id: str
+    version: str
+    created_at: int
+    steps: List[Dict[str, Any]] = field(default_factory=list)
+
+    def add_step(self, kind: str, description: str, **extra: Any) -> None:
+        entry: Dict[str, Any] = {"kind": kind, "description": description}
+        entry.update(extra)
+        self.steps.append(entry)
+
+    def as_dict(self) -> dict:
+        return {
+            "vault_id": self.vault_id,
+            "version": self.version,
+            "created_at": self.created_at,
+            "steps": list(self.steps),
+        }
+
+
+@dataclass
+class SimulationResult:
+    vault_id: str
+    start_ts: int
+    end_ts: int
+    initial_deposit: float
+    final_value: float
+    steps: List[dict] = field(default_factory=list)
+
+    def as_dict(self) -> dict:
+        return {
+            "vault_id": self.vault_id,
+            "start_ts": self.start_ts,
+            "end_ts": self.end_ts,
+            "initial_deposit": self.initial_deposit,
+            "final_value": self.final_value,
+            "steps": list(self.steps),
+        }
+
+
+# -----------------------------------------------------------------------------
+# Registry
+# -----------------------------------------------------------------------------
+
+
+class Registry:
+    def __init__(self) -> None:
+        self.chains: Dict[str, Chain] = {}
+        self.protocols: Dict[str, Protocol] = {}
+        self.strategies: Dict[str, StrategyConfig] = {}
+        self.vaults: Dict[str, VaultConfig] = {}
+
