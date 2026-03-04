@@ -680,3 +680,65 @@ def seed_extended(registry: Registry) -> None:
                     strategies=["dai-aave-eth", "dai-comp-eth", "dai-curve-eth"],
                 )
             )
+        except ValueError:
+            pass
+
+
+# -----------------------------------------------------------------------------
+# Validator
+# -----------------------------------------------------------------------------
+
+
+class Validator:
+    def __init__(self, registry: Registry) -> None:
+        self.registry = registry
+        self.errors: List[str] = []
+        self.warnings: List[str] = []
+
+    def validate_all(self) -> bool:
+        self.errors = []
+        self.warnings = []
+        for chain in self.registry.chains.values():
+            self._validate_chain(chain)
+        for proto in self.registry.protocols.values():
+            self._validate_protocol(proto)
+        for strat in self.registry.strategies.values():
+            self._validate_strategy(strat)
+        for vault in self.registry.vaults.values():
+            self._validate_vault(vault)
+        return len(self.errors) == 0
+
+    def _validate_chain(self, chain: Chain) -> None:
+        if not chain.name or not chain.rpc:
+            self.errors.append(f"Chain missing name or rpc: {chain.name}")
+        if chain.block_time_s <= 0:
+            self.warnings.append(f"Chain {chain.name}: block_time_s should be positive")
+
+    def _validate_protocol(self, proto: Protocol) -> None:
+        if proto.chain not in self.registry.chains:
+            self.errors.append(f"Protocol {proto.name} references unknown chain {proto.chain}")
+        if proto.kind not in ("lending", "dex", "staking", "vault", "boost"):
+            self.warnings.append(f"Protocol {proto.name}: unknown kind {proto.kind}")
+
+    def _validate_strategy(self, strat: StrategyConfig) -> None:
+        key = f"{strat.chain}:{strat.protocol}"
+        if key not in self.registry.protocols:
+            self.errors.append(f"Strategy {strat.id} references unknown protocol {key}")
+        if strat.base_apr < 0 or strat.boost_apr < 0:
+            self.errors.append(f"Strategy {strat.id}: negative APR")
+        if strat.performance_fee < 0 or strat.performance_fee > 1:
+            self.errors.append(f"Strategy {strat.id}: performance_fee must be in [0,1]")
+        if strat.max_capacity <= 0:
+            self.warnings.append(f"Strategy {strat.id}: max_capacity should be positive")
+        if strat.risk_band not in ("CONSERVATIVE", "BALANCED", "AGGRESSIVE"):
+            self.warnings.append(f"Strategy {strat.id}: risk_band {strat.risk_band} non-standard")
+
+    def _validate_vault(self, vault: VaultConfig) -> None:
+        if vault.base_chain not in self.registry.chains:
+            self.errors.append(f"Vault {vault.id} references unknown chain {vault.base_chain}")
+        for sid in vault.strategies:
+            if sid not in self.registry.strategies:
+                self.errors.append(f"Vault {vault.id} references unknown strategy {sid}")
+            else:
+                s = self.registry.strategies[sid]
+                if s.asset != vault.asset:
