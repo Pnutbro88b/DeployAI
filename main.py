@@ -308,3 +308,65 @@ class Simulator:
                 continue
             if strat.risk_band != vault.default_risk_band:
                 continue
+            score = max(strat.net_apr(), 0.0)
+            scores[sid] = score
+        if not scores:
+            eq = 1.0 / max(len(vault.strategies), 1)
+            return {sid: eq for sid in vault.strategies}
+        total = sum(scores.values())
+        return {sid: s / total for sid, s in scores.items()}
+
+    @staticmethod
+    def _apply_noise(apr: float, std: float) -> float:
+        if std <= 0:
+            return apr
+        return max(0.0, min(1.0, apr + random.gauss(0.0, std)))
+
+
+# -----------------------------------------------------------------------------
+# Planner
+# -----------------------------------------------------------------------------
+
+
+class Planner:
+    def __init__(self, registry: Registry) -> None:
+        self.registry = registry
+
+    def build_plan(self, vault_id: str, version: str = "v1") -> DeploymentPlan:
+        vault = self.registry.get_vault(vault_id)
+        if not vault:
+            raise ValueError(f"Unknown vault: {vault_id}")
+        plan = DeploymentPlan(vault_id=vault_id, version=version, created_at=int(time.time()))
+
+        plan.add_step(
+            "deploy_vault",
+            f"Deploy Loopa vault {vault.name} on {vault.base_chain}",
+            asset=vault.asset,
+            management_fee=str(vault.management_fee),
+            withdrawal_fee=str(vault.withdrawal_fee),
+        )
+        for sid in vault.strategies:
+            strat = self.registry.get_strategy(sid)
+            if not strat:
+                continue
+            plan.add_step(
+                "register_strategy",
+                f"Register strategy {strat.name} on {strat.chain}/{strat.protocol}",
+                asset=strat.asset,
+                risk=strat.risk_band,
+                base_apr=str(strat.base_apr),
+                boost_apr=str(strat.boost_apr),
+            )
+        plan.add_step(
+            "set_rebalance",
+            f"Set rebalance interval to {vault.rebalance_interval_s} seconds",
+            interval_s=str(vault.rebalance_interval_s),
+        )
+        return plan
+
+
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+
+
