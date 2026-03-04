@@ -370,3 +370,65 @@ class Planner:
 # -----------------------------------------------------------------------------
 
 
+def pretty_json(obj: Any) -> str:
+    return json.dumps(obj, indent=2, sort_keys=True)
+
+
+def fmt_pct(v: float) -> str:
+    return f"{v * 100:.2f}%"
+
+
+def fmt_num(v: float) -> str:
+    if abs(v) >= 1_000_000_000:
+        return f"{v / 1_000_000_000:.2f}B"
+    if abs(v) >= 1_000_000:
+        return f"{v / 1_000_000:.2f}M"
+    if abs(v) >= 1_000:
+        return f"{v / 1_000:.2f}k"
+    return f"{v:.2f}"
+
+
+def config_path() -> Path:
+    return Path.home() / CONFIG_DIR / CONFIG_FILE
+
+
+def load_config() -> dict:
+    p = config_path()
+    if not p.exists():
+        return {}
+    try:
+        with open(p, "r", encoding="utf8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_config(data: dict) -> None:
+    p = config_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with open(p, "w", encoding="utf8") as f:
+        json.dump(data, f, indent=2, sort_keys=True)
+
+
+# -----------------------------------------------------------------------------
+# Seed defaults
+# -----------------------------------------------------------------------------
+
+
+def seed_defaults(registry: Registry) -> None:
+    registry.add_chain(Chain("Ethereum", "https://mainnet.example.rpc"))
+    registry.add_chain(Chain("Arbitrum", "https://arb.example.rpc", block_time_s=0.25))
+    registry.add_chain(Chain("Optimism", "https://op.example.rpc", block_time_s=2.0))
+    registry.add_chain(Chain("Polygon", "https://poly.example.rpc", block_time_s=2.0))
+
+    registry.add_protocol(Protocol("AaveV3", "Ethereum", "lending"))
+    registry.add_protocol(Protocol("UniswapV3", "Arbitrum", "dex"))
+    registry.add_protocol(Protocol("VelodromeV2", "Optimism", "dex"))
+    registry.add_protocol(Protocol("CompoundV3", "Ethereum", "lending"))
+    registry.add_protocol(Protocol("Curve", "Ethereum", "dex"))
+
+    registry.add_strategy(
+        StrategyConfig(
+            id="usdc-aave-eth",
+            name="USDC Aave V3 Ethereum",
+            asset="USDC",
