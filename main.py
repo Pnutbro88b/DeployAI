@@ -742,3 +742,65 @@ class Validator:
             else:
                 s = self.registry.strategies[sid]
                 if s.asset != vault.asset:
+                    self.warnings.append(f"Vault {vault.id} asset {vault.asset} vs strategy {sid} asset {s.asset}")
+        if vault.management_fee < 0 or vault.management_fee > 1:
+            self.errors.append(f"Vault {vault.id}: management_fee must be in [0,1]")
+        if vault.rebalance_interval_s <= 0:
+            self.warnings.append(f"Vault {vault.id}: rebalance_interval_s should be positive")
+
+
+# -----------------------------------------------------------------------------
+# Report generator
+# -----------------------------------------------------------------------------
+
+
+class ReportGenerator:
+    def __init__(self, registry: Registry) -> None:
+        self.registry = registry
+
+    def text_report(self, vault_id: Optional[str] = None) -> str:
+        lines: List[str] = []
+        lines.append(f"# DeployAI Report — {LOOPA_ENGINE} Yield Vaults")
+        lines.append(f"Generated at {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())}")
+        lines.append("")
+        lines.append("## Chains")
+        for c in self.registry.chains.values():
+            lines.append(f"- {c.name}: {c.rpc} (block ~{c.block_time_s}s)")
+        lines.append("")
+        lines.append("## Strategies (by net APR)")
+        sorted_strats = sorted(
+            self.registry.strategies.values(),
+            key=lambda s: s.net_apr(),
+            reverse=True,
+        )
+        for s in sorted_strats:
+            lines.append(f"- **{s.id}**: {s.name} | net APR {fmt_pct(s.net_apr())} | cap {fmt_num(s.max_capacity)} | {s.chain}/{s.protocol}")
+        lines.append("")
+        lines.append("## Vaults")
+        vaults = list(self.registry.vaults.values())
+        if vault_id:
+            vaults = [v for v in vaults if v.id == vault_id]
+        for v in vaults:
+            lines.append(f"- **{v.id}**: {v.name} | asset {v.asset} | risk band {v.default_risk_band}")
+            lines.append(f"  Strategies: {', '.join(v.strategies)}")
+            lines.append(f"  Management fee {fmt_pct(v.management_fee)} | Withdrawal fee {fmt_pct(v.withdrawal_fee)}")
+        return "\n".join(lines)
+
+    def apr_comparison_table(self, asset: str = "USDC") -> str:
+        lines = [f"## APR comparison ({asset})", ""]
+        matching = [s for s in self.registry.strategies.values() if s.asset == asset]
+        if not matching:
+            return "\n".join(lines) + "No strategies for this asset.\n"
+        matching.sort(key=lambda s: s.net_apr(), reverse=True)
+        lines.append("| Strategy | Chain | Protocol | Gross APR | Net APR | Cap |")
+        lines.append("|---------|-------|----------|-----------|---------|-----|")
+        for s in matching:
+            lines.append(f"| {s.id} | {s.chain} | {s.protocol} | {fmt_pct(s.gross_apr())} | {fmt_pct(s.net_apr())} | {fmt_num(s.max_capacity)} |")
+        return "\n".join(lines)
+
+
+# -----------------------------------------------------------------------------
+# Monte Carlo and stress simulator
+# -----------------------------------------------------------------------------
+
+
