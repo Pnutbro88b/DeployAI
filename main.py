@@ -1424,3 +1424,65 @@ TEMPLATE_REGISTRY_JSON = {
             "asset": "USDC",
             "base_chain": "Ethereum",
             "management_fee": 0.02,
+            "withdrawal_fee": 0.001,
+            "default_risk_band": "BALANCED",
+            "rebalance_interval_s": 86400,
+            "strategies": ["usdc-aave-eth"],
+        },
+    ],
+}
+
+
+def cmd_reference() -> int:
+    print(REFERENCE_TEXT.strip())
+    return 0
+
+
+def cmd_batch_sim(registry: Registry, vault_id: Optional[str], days_list: List[int], deposit: float) -> int:
+    vault_ids = [vault_id] if vault_id else None
+    results = run_batch_simulations(registry, vault_ids=vault_ids, days_list=days_list, deposit=deposit)
+    for r in results:
+        print(f"  {r['vault_id']}  days={r['days']}  deposit={fmt_num(r['deposit'])}  final={fmt_num(r['final_value'])}  gain={fmt_pct(r['gain_pct'])}")
+    return 0
+
+
+def cmd_export_spec(registry: Registry, vault_id: str, path: str) -> int:
+    try:
+        spec = export_vault_spec(registry, vault_id)
+        with open(path, "w", encoding="utf8") as f:
+            json.dump(spec, f, indent=2, sort_keys=True)
+        print(f"Exported {vault_id} spec to {path}")
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------------
+
+
+def main(argv: List[str]) -> int:
+    args = parse_args(argv[1:])
+    if getattr(args, "version", False):
+        print(f"{APP_NAME} {DEPLOYAI_VERSION} — {LOOPA_ENGINE} yield vault orchestrator")
+        return 0
+
+    registry = Registry()
+    seed_defaults(registry)
+    seed_extended(registry)
+
+    config_path_arg = args.config or load_config().get("config_path", "")
+    if config_path_arg and os.path.exists(config_path_arg):
+        try:
+            registry.load_from_file(config_path_arg)
+        except Exception:
+            pass
+
+    cmd = (args.command or "interactive").lower()
+    if cmd == "interactive":
+        return run_interactive(registry)
+    if cmd == "snapshot":
+        return cmd_snapshot(registry)
+    if cmd == "strategies":
