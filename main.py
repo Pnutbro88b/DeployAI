@@ -1238,3 +1238,65 @@ def run_interactive(registry: Registry) -> int:
             cmd_health(registry)
         elif choice == "16":
             cmd_reference()
+        elif choice == "17":
+            vault_id = input("Vault ID (empty=all): ").strip() or None
+            deposit = input("Deposit [100000]: ").strip() or "100000"
+            cmd_batch_sim(registry, vault_id, [90, 180, 365], float(deposit))
+        elif choice == "18":
+            vault_id = input("Vault ID [loopa-usdc]: ").strip() or "loopa-usdc"
+            path = input("Output path: ").strip()
+            if path:
+                cmd_export_spec(registry, vault_id, path)
+        elif choice == "19":
+            print(pretty_json(TEMPLATE_REGISTRY_JSON))
+        else:
+            print("Unknown option")
+    return 0
+
+
+# -----------------------------------------------------------------------------
+# Export / import and batch helpers
+# -----------------------------------------------------------------------------
+
+
+def export_vault_spec(registry: Registry, vault_id: str) -> dict:
+    """Export a single vault and all its strategies and dependencies for deployment spec."""
+    vault = registry.get_vault(vault_id)
+    if not vault:
+        raise ValueError(f"Unknown vault: {vault_id}")
+    chains_used: Dict[str, Chain] = {}
+    protocols_used: Dict[str, Protocol] = {}
+    strategies_used: List[StrategyConfig] = []
+    for sid in vault.strategies:
+        s = registry.get_strategy(sid)
+        if s:
+            strategies_used.append(s)
+            if s.chain not in chains_used and registry.get_chain(s.chain):
+                chains_used[s.chain] = registry.chains[s.chain]
+            key = f"{s.chain}:{s.protocol}"
+            if key not in protocols_used and key in registry.protocols:
+                protocols_used[key] = registry.protocols[key]
+    return {
+        "vault": vault.as_dict(),
+        "chains": [c.as_dict() for c in chains_used.values()],
+        "protocols": [p.as_dict() for p in protocols_used.values()],
+        "strategies": [s.as_dict() for s in strategies_used],
+        "exported_at": int(time.time()),
+    }
+
+
+def run_batch_simulations(
+    registry: Registry,
+    vault_ids: Optional[List[str]] = None,
+    days_list: Optional[List[int]] = None,
+    deposit: float = 100_000.0,
+) -> List[Dict[str, Any]]:
+    """Run simulations for one or more vaults and day horizons; return list of result summaries."""
+    if not vault_ids:
+        vault_ids = list(registry.vaults.keys())
+    if not days_list:
+        days_list = [90, 180, 365]
+    sim = Simulator(registry)
+    results: List[Dict[str, Any]] = []
+    for vid in vault_ids:
+        if vid not in registry.vaults:
