@@ -1300,3 +1300,65 @@ def run_batch_simulations(
     results: List[Dict[str, Any]] = []
     for vid in vault_ids:
         if vid not in registry.vaults:
+            continue
+        for d in days_list:
+            try:
+                res = sim.simulate_vault(vid, deposit, d)
+                results.append({
+                    "vault_id": vid,
+                    "days": d,
+                    "deposit": deposit,
+                    "final_value": res.final_value,
+                    "gain_pct": (res.final_value - res.initial_deposit) / res.initial_deposit,
+                })
+            except Exception:
+                pass
+    return results
+
+
+def merge_config_into_registry(registry: Registry, data: dict) -> None:
+    """Merge chains/protocols/strategies/vaults from data into registry; skip duplicates by id/name."""
+    for ch in data.get("chains", []):
+        name = ch.get("name")
+        if name and registry.get_chain(name) is None:
+            try:
+                registry.add_chain(Chain(**{k: v for k, v in ch.items() if k in ("name", "rpc", "block_time_s", "base_gas_price_gwei")}))
+            except (TypeError, ValueError):
+                pass
+    for pr in data.get("protocols", []):
+        key = f"{pr.get('chain', '')}:{pr.get('name', '')}"
+        if key not in registry.protocols:
+            try:
+                registry.add_protocol(Protocol(**{k: v for k, v in pr.items() if k in ("name", "chain", "kind")}))
+            except (TypeError, ValueError):
+                pass
+    for st in data.get("strategies", []):
+        sid = st.get("id")
+        if sid and sid not in registry.strategies:
+            try:
+                registry.add_strategy(StrategyConfig(**{k: v for k, v in st.items() if k not in ("gross_apr", "net_apr")}))
+            except (TypeError, ValueError):
+                pass
+    for vt in data.get("vaults", []):
+        vid = vt.get("id")
+        if vid and vid not in registry.vaults:
+            try:
+                registry.add_vault(VaultConfig(**{k: v for k, v in vt.items() if k in ("id", "name", "asset", "base_chain", "management_fee", "withdrawal_fee", "default_risk_band", "rebalance_interval_s", "strategies")}))
+            except (TypeError, ValueError):
+                pass
+
+
+# -----------------------------------------------------------------------------
+# Reference and templates
+# -----------------------------------------------------------------------------
+
+REFERENCE_TEXT = """
+DeployAI Reference — Loopa Yield Vault Orchestrator
+====================================================
+
+Commands (CLI):
+  interactive     Start interactive menu (default).
+  snapshot         Print full registry as JSON.
+  strategies       List all strategies with net APR and capacity.
+  vaults           List all vaults and their strategy IDs.
+  chains           List supported chains and RPC endpoints.
