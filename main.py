@@ -1176,3 +1176,65 @@ def run_interactive(registry: Registry) -> int:
         print("12) APR comparison table")
         print("13) Monte Carlo simulation")
         print("14) Stress test")
+        print("15) Health summary")
+        print("16) Reference (usage)")
+        print("17) Batch simulation")
+        print("18) Export vault spec to file")
+        print("19) Print template JSON")
+        print("0) Exit")
+        try:
+            choice = input("Select: ").strip() or "0"
+        except EOFError:
+            break
+        if choice == "0":
+            break
+        if choice == "1":
+            cmd_snapshot(registry)
+        elif choice == "2":
+            cmd_strategies(registry)
+        elif choice == "3":
+            cmd_vaults(registry)
+        elif choice == "4":
+            cmd_chains(registry)
+        elif choice == "5":
+            vault_id = input("Vault ID [loopa-usdc]: ").strip() or "loopa-usdc"
+            days = input("Days [365]: ").strip() or "365"
+            deposit = input("Deposit [100000]: ").strip() or "100000"
+            cmd_simulate(registry, vault_id, int(days), float(deposit))
+        elif choice == "6":
+            vault_id = input("Vault ID [loopa-usdc]: ").strip() or "loopa-usdc"
+            cmd_plan(registry, vault_id)
+        elif choice == "7":
+            path = input("JSON path: ").strip()
+            if path:
+                cmd_load(registry, path)
+        elif choice == "8":
+            path = input("Output path: ").strip()
+            if path:
+                cmd_save(registry, path)
+        elif choice == "9":
+            cmd_demo(registry)
+        elif choice == "10":
+            cmd_validate(registry)
+        elif choice == "11":
+            vault_id = input("Vault ID (empty=all): ").strip() or None
+            cmd_report(registry, vault_id)
+        elif choice == "12":
+            asset = input("Asset [USDC]: ").strip() or "USDC"
+            cmd_apr_table(registry, asset)
+        elif choice == "13":
+            vault_id = input("Vault ID [loopa-usdc]: ").strip() or "loopa-usdc"
+            days = input("Days [365]: ").strip() or "365"
+            deposit = input("Deposit [100000]: ").strip() or "100000"
+            paths = input("Paths [100]: ").strip() or "100"
+            cmd_monte_carlo(registry, vault_id, int(days), float(deposit), int(paths))
+        elif choice == "14":
+            vault_id = input("Vault ID [loopa-usdc]: ").strip() or "loopa-usdc"
+            days = input("Days [365]: ").strip() or "365"
+            deposit = input("Deposit [100000]: ").strip() or "100000"
+            shock = input("APR shock [-0.5]: ").strip() or "-0.5"
+            cmd_stress(registry, vault_id, int(days), float(deposit), float(shock))
+        elif choice == "15":
+            cmd_health(registry)
+        elif choice == "16":
+            cmd_reference()
