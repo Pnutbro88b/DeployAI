@@ -1362,3 +1362,65 @@ Commands (CLI):
   strategies       List all strategies with net APR and capacity.
   vaults           List all vaults and their strategy IDs.
   chains           List supported chains and RPC endpoints.
+  simulate         Run single-path simulation (--vault, --days, --deposit).
+  plan             Build deployment plan for a vault (--vault).
+  load             Load registry from JSON file (--file).
+  save             Save registry snapshot to file (--file).
+  validate         Run validation (chains, protocols, strategies, vaults).
+  report           Print text report; optional vault filter.
+  apr-table        Print APR comparison table for an asset (--asset).
+  monte-carlo      Run Monte Carlo simulation (--paths, --vault, --days, --deposit).
+  stress           Run stress test with APR shock (--vault, --days, --deposit).
+  health           Print health summary (counts + validation).
+  demo             Quick demo simulation.
+  version          Print app version.
+
+Options:
+  --config PATH    Use config file at PATH.
+  --file PATH      File path for load/save.
+  --vault ID       Vault ID (default: loopa-usdc).
+  --days N         Simulation horizon in days (default: 365).
+  --deposit N      Initial deposit amount (default: 100000).
+  --paths N        Monte Carlo paths (default: 100).
+  --asset NAME     Asset for APR table (default: USDC).
+
+Config file: ~/.deployai/config.json
+  Optional keys: config_path (path to registry JSON to load on startup).
+
+Domain:
+  Chain: name, rpc, block_time_s, base_gas_price_gwei.
+  Protocol: name, chain, kind (lending|dex|staking|vault|boost).
+  StrategyConfig: id, name, asset, chain, protocol, risk_band, base_apr, boost_apr, performance_fee, max_capacity.
+  VaultConfig: id, name, asset, base_chain, management_fee, withdrawal_fee, default_risk_band, rebalance_interval_s, strategies[].
+  Risk bands: CONSERVATIVE, BALANCED, AGGRESSIVE.
+"""
+
+TEMPLATE_REGISTRY_JSON = {
+    "chains": [
+        {"name": "Ethereum", "rpc": "https://eth.example/rpc", "block_time_s": 12.0, "base_gas_price_gwei": 2.0},
+    ],
+    "protocols": [
+        {"name": "AaveV3", "chain": "Ethereum", "kind": "lending"},
+    ],
+    "strategies": [
+        {
+            "id": "usdc-aave-eth",
+            "name": "USDC Aave Ethereum",
+            "asset": "USDC",
+            "chain": "Ethereum",
+            "protocol": "AaveV3",
+            "risk_band": "CONSERVATIVE",
+            "base_apr": 0.05,
+            "boost_apr": 0.01,
+            "performance_fee": 0.10,
+            "max_capacity": 50_000_000.0,
+            "metadata": {},
+        },
+    ],
+    "vaults": [
+        {
+            "id": "loopa-usdc",
+            "name": "Loopa USDC Vault",
+            "asset": "USDC",
+            "base_chain": "Ethereum",
+            "management_fee": 0.02,
