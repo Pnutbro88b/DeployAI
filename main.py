@@ -1486,3 +1486,50 @@ def main(argv: List[str]) -> int:
     if cmd == "snapshot":
         return cmd_snapshot(registry)
     if cmd == "strategies":
+        return cmd_strategies(registry)
+    if cmd == "vaults":
+        return cmd_vaults(registry)
+    if cmd == "chains":
+        return cmd_chains(registry)
+    if cmd == "simulate":
+        return cmd_simulate(registry, args.vault, args.days, args.deposit)
+    if cmd == "plan":
+        return cmd_plan(registry, args.vault)
+    if cmd == "load":
+        return cmd_load(registry, args.file or "")
+    if cmd == "save":
+        return cmd_save(registry, args.file or "")
+    if cmd == "demo":
+        return cmd_demo(registry)
+    if cmd == "validate":
+        return cmd_validate(registry)
+    if cmd == "report":
+        return cmd_report(registry, getattr(args, "vault", None) or None)
+    if cmd == "apr-table":
+        return cmd_apr_table(registry, getattr(args, "asset", "USDC"))
+    if cmd == "monte-carlo":
+        return cmd_monte_carlo(registry, args.vault, args.days, args.deposit, getattr(args, "paths", 100))
+    if cmd == "stress":
+        return cmd_stress(registry, args.vault, args.days, args.deposit)
+    if cmd == "health":
+        return cmd_health(registry)
+    if cmd == "reference":
+        return cmd_reference()
+    if cmd == "batch-sim":
+        days_list = [90, 180, 365] if not getattr(args, "days", None) else [int(args.days)]
+        return cmd_batch_sim(registry, args.vault or None, days_list, args.deposit)
+    if cmd == "export-spec":
+        if not args.file:
+            print("Error: --file required for export-spec", file=sys.stderr)
+            return 1
+        return cmd_export_spec(registry, args.vault, args.file)
+    if cmd == "template":
+        print(pretty_json(TEMPLATE_REGISTRY_JSON))
+        return 0
+
+    print(f"Unknown command: {cmd}", file=sys.stderr)
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
